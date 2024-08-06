@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <toyos/baretest/baretest.hpp>
 #include <toyos/x86/x86asm.hpp>
+#include "img.h"
 
 #if 0
 TEST_CASE(tsc_is_monotonous)
@@ -38,6 +39,7 @@ TEST_CASE(tsc_is_monotonous)
 }
 #endif
 
+#if 0
 TEST_CASE(register_fill)
 {
     uint64_t* mem_ptr_0 = (uint64_t*)0x0;
@@ -79,6 +81,63 @@ TEST_CASE(register_fill)
 	    "mov $0xc2c2c2c2c2c2c2c2, %%rsp;"
 	    "jmp .;"
 	    ::: "memory");
+}
+#endif
+
+TEST_CASE(fill_mem_mmap_vmware_2g)
+{
+    std::pair<uint64_t,uint64_t> LOAD_ADDR {0xc00000, 0xc00000 + 2 * 1024 * 1024};
+    std::vector<std::pair<uint64_t, uint64_t>> memmap = {
+	    {0x0000000000000000ull, 0x0000000000097bffull},
+	    {0x0000000000100000ull, 0x000000007fedffffull},
+	    {0x000000007ff00000ull, 0x000000007fffffffull} };
+
+    std::vector<std::pair<uint64_t, uint64_t>> memmap_page_aligned;
+
+    info("Original memory map:");
+    for (auto& range : memmap) {
+	info("    {016x} - {016x}", range.first, range.second + 1);
+	memmap_page_aligned.emplace_back(range.first, (range.second + 1) & ~0xFFFull);
+    }
+
+#if 0
+    uint64_t total_size {0};
+    info("Page aligned memory map:");
+    for (auto& range : memmap_page_aligned) {
+	info("    {016x} - {016x}", range.first, range.second);
+	total_size += range.second - range.first;
+    }
+    info("Total usable memory: {} which is {} MiB", total_size, total_size / 1024 / 1024);
+
+    info("Writing patterns:");
+    for (auto& range : memmap_page_aligned) {
+	    uint64_t num_pages {(range.second - range.first) >> 12};
+	    info("Filling {016x} - {016x}", range.first, range.second);
+	    for (uint64_t page {0}; page < num_pages; page++) {
+		uint64_t start_addr {range.first + page * PAGE_SIZE};
+		if (start_addr < LOAD_ADDR.first || start_addr > LOAD_ADDR.second) {
+		    uint64_t* start_ptr {reinterpret_cast<uint64_t*>(start_addr)};
+		    *start_ptr = start_addr;
+		    memset(start_ptr + 1, 0, PAGE_SIZE - sizeof(uint64_t));
+		}
+	    }
+    }
+    info("Finished");
+#endif
+
+    uint16_t* framebuffer = reinterpret_cast<uint16_t*>(0xb8000);
+    uint64_t loop {0};
+    while (true) {
+        for (unsigned i = 0; i < (80 * 25); ++i) {
+	    uint8_t col = ((pic[i]) % 0x10);
+	    col = col ? (col + loop * 2) : 0; 
+	    framebuffer[i] = uint16_t(col) << 12;
+	    for (uint64_t j=0; j<50000ul; j++) {asm("pause");}
+        }
+	loop++;
+    }
+
+    while (true) {}
 }
 
 
