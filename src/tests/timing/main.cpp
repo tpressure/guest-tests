@@ -180,15 +180,21 @@ TEST_CASE(simple_migrate)
 }
 #endif
 
-TEST_CASE(fill_vga_pattern)
+#if 1
+TEST_CASE(fill_vga_pattern_static)
 {
-    uint16_t* fb {reinterpret_cast<uint16_t*>(0xb8000)};
-    uint16_t  ch {uint16_t('Q') | (0x70 << 8)};
+    static constexpr char fill_string[] = "Test";
 
-    for (unsigned i = 0; i < 4000; ++i) {
+    uint16_t* fb {reinterpret_cast<uint16_t*>(0xb8000)};
+
+    for (unsigned i = 0; i < 2000; ++i) {
+        uint16_t ch {uint16_t(uint16_t(fill_string[i % 4]) | (0x70 << 8))};
         *(fb + i) = ch;
     }
+    while (true) {
+        asm volatile("nop");
+    }
 }
-
+#endif
 
 BARETEST_RUN;
