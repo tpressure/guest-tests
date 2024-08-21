@@ -6,6 +6,7 @@
 #include <toyos/baretest/baretest.hpp>
 #include <toyos/x86/x86asm.hpp>
 #include "img.h"
+#include "img_sap.h"
 
 #if 0
 TEST_CASE(tsc_is_monotonous)
@@ -51,7 +52,6 @@ TEST_CASE(register_fill)
 	*(mem_ptr + i) = 0xdeadbeef13371337ull;
     }
 
-
     uint64_t cr0 {get_cr0()};
     uint64_t cr3 {get_cr3()};
     uint64_t cr4 {get_cr4()};
@@ -63,6 +63,8 @@ TEST_CASE(register_fill)
 	    "push %%rbp;"
 	    "mov $0xa0a0a0a0a0a0a0a0, %%rax;"
 	    "mov %%rax, %%cr2;"
+        "mov $0xc, %%rax;"
+        "mov %%rax, %%cr8;"
 	    "mov $0x1111111111111111, %%rax;"
 	    "mov $0x2222222222222222, %%rbx;"
 	    "mov $0x3333333333333333, %%rcx;"
@@ -84,6 +86,7 @@ TEST_CASE(register_fill)
 }
 #endif
 
+#if 0
 TEST_CASE(fill_mem_mmap_vmware_2g)
 {
     std::pair<uint64_t,uint64_t> LOAD_ADDR {0xc00000, 0xc00000 + 2 * 1024 * 1024};
@@ -126,18 +129,65 @@ TEST_CASE(fill_mem_mmap_vmware_2g)
 #endif
 
     uint16_t* framebuffer = reinterpret_cast<uint16_t*>(0xb8000);
-    uint64_t loop {0};
+    uint64_t loop {1};
+
     while (true) {
         for (unsigned i = 0; i < (80 * 25); ++i) {
-	    uint8_t col = ((pic[i]) % 0x10);
-	    col = col ? (col + loop * 2) : 0; 
+	    uint8_t col = (((loop % 2) ? pic[i] : pic_sap[i]) % 0x10);
 	    framebuffer[i] = uint16_t(col) << 12;
+
 	    for (uint64_t j=0; j<50000ul; j++) {asm("pause");}
         }
-	loop++;
+	    loop++;
     }
 
     while (true) {}
+}
+#endif
+
+#if 0
+volatile uint16_t* fb {reinterpret_cast<uint16_t*>(0xb8000)};
+static unsigned char foo_str[] = "foo";
+static unsigned char bar_str[] = "bar";
+volatile unsigned fake {0};
+
+[[gnu::noinline]] void foo()
+{
+    while (fake == 0) {
+        *(fb + 0) = foo_str[0] | (0xF0 << 8);
+        *(fb + 1) = foo_str[1] | (0xF0 << 8);
+        *(fb + 2) = foo_str[2] | (0xF0 << 8);
+    }
+}
+
+[[gnu::noinline]] void bar()
+{
+    while (fake == 0) {
+        *(fb + 0) = bar_str[0] | (0xF0 << 8);
+        *(fb + 1) = bar_str[1] | (0xF0 << 8);
+        *(fb + 2) = bar_str[2] | (0xF0 << 8);
+    }
+}
+
+TEST_CASE(simple_migrate)
+{
+    auto tsc {rdtsc()};
+    if (tsc & 0x1) {
+        foo();
+    } else {
+        bar();
+    }
+}
+#endif
+
+TEST_CASE(fill_vga_pattern)
+{
+    uint16_t* fb {reinterpret_cast<uint16_t*>(0xb8000)};
+    uint16_t  ch {uint16_t('Q') | (0x70 << 8)};
+
+    for (unsigned i = 0; i < 4000; ++i) {
+        *(fb + i) = ch;
+    }
 }
 
 

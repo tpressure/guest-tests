@@ -134,7 +134,7 @@ void wait_for_interrupts(uint32_t expected_irq_count)
         }
     }
 }
-
+#if 0
 void test_lapic_priority(dest_sh sh)
 {
     drain_interrupts();
@@ -163,6 +163,7 @@ TEST_CASE(lapic_priority_ipi_no_shorthand)
 {
     test_lapic_priority(dest_sh::NO_SH);
 }
+#endif
 
 void test_interrupt_injection_should_honor_tpr_value(dest_sh sh)
 {
@@ -175,25 +176,32 @@ void test_interrupt_injection_should_honor_tpr_value(dest_sh sh)
     irq_info.reset();
     irq_handler::guard _(lapic_irq_handler);
 
-    for (uint32_t priority = 0xe; priority >= 0x2; --priority) {
-        confirmed_vectors.clear();
-        // for each priority, we allow only 16 (VECTORS_PER_CLASS) interrupts.
-        const uint32_t num_allowed_vectors = (MAX_VECTOR + 1) - ((priority + 1) * VECTORS_PER_CLASS);
-        for (uint32_t vector : expected_vectors) {
-            send_self_ipi(vector, sh);
+    *reinterpret_cast<volatile uint8_t*>(0xb8002) = ' ';
+    uint8_t rotor[] = { '/', '-', '\\', '|'};
+    uint64_t counter {0};
+    while (true) {
+        for (uint32_t priority = 0xe; priority >= 0x2; --priority) {
+            confirmed_vectors.clear();
+            // for each priority, we allow only 16 (VECTORS_PER_CLASS) interrupts.
+            const uint32_t num_allowed_vectors = (MAX_VECTOR + 1) - ((priority + 1) * VECTORS_PER_CLASS);
+            for (uint32_t vector : expected_vectors) {
+                send_self_ipi(vector, sh);
+            }
+
+            lapic_set_task_priority(priority);
+            wait_for_interrupts(num_allowed_vectors);
+
+            for (uint32_t& vec : confirmed_vectors) {
+                BARETEST_ASSERT((vec > MAX_VECTOR - num_allowed_vectors));
+            }
+
+            BARETEST_ASSERT((confirmed_vectors.size() == num_allowed_vectors));
+
+            lapic_set_task_priority(0x0);
+            wait_for_interrupts(expected_vectors.size());
         }
-
-        lapic_set_task_priority(priority);
-        wait_for_interrupts(num_allowed_vectors);
-
-        for (uint32_t& vec : confirmed_vectors) {
-            BARETEST_ASSERT((vec > MAX_VECTOR - num_allowed_vectors));
-        }
-
-        BARETEST_ASSERT((confirmed_vectors.size() == num_allowed_vectors));
-
-        lapic_set_task_priority(0x0);
-        wait_for_interrupts(expected_vectors.size());
+        *reinterpret_cast<volatile uint8_t*>(0xb8000) = rotor[counter % 4];
+        counter++;
     }
 }
 

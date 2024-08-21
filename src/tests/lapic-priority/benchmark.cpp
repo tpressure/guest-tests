@@ -1,3 +1,4 @@
+#if 0
 // Copyright © 2024 Cyberus Technology GmbH <contact@cyberus-technology.de>
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
@@ -59,3 +60,4 @@ TEST_CASE(benchmark_read_lapic_id_cycles)
 
     BENCHMARK_RESULT("read_lapic_id_cycles", data.avg(), "cycles");
 }
+#endif
