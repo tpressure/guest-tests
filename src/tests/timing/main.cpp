@@ -86,24 +86,24 @@ TEST_CASE(register_fill)
 }
 #endif
 
-#if 0
+#if 1
 TEST_CASE(fill_mem_mmap_vmware_2g)
 {
     std::pair<uint64_t,uint64_t> LOAD_ADDR {0xc00000, 0xc00000 + 2 * 1024 * 1024};
     std::vector<std::pair<uint64_t, uint64_t>> memmap = {
-	    {0x0000000000000000ull, 0x0000000000097bffull},
-	    {0x0000000000100000ull, 0x000000007fedffffull},
-	    {0x000000007ff00000ull, 0x000000007fffffffull} };
+        {0x0000000000000000ull, 0x0000000000097bffull},
+        {0x0000000000100000ull, 0x000000007fedffffull},
+        {0x000000007ff00000ull, 0x000000007fffffffull} };
 
     std::vector<std::pair<uint64_t, uint64_t>> memmap_page_aligned;
 
     info("Original memory map:");
     for (auto& range : memmap) {
-	info("    {016x} - {016x}", range.first, range.second + 1);
-	memmap_page_aligned.emplace_back(range.first, (range.second + 1) & ~0xFFFull);
+    info("    {016x} - {016x}", range.first, range.second + 1);
+    memmap_page_aligned.emplace_back(range.first, (range.second + 1) & ~0xFFFull);
     }
 
-#if 0
+#if 1
     uint64_t total_size {0};
     info("Page aligned memory map:");
     for (auto& range : memmap_page_aligned) {
@@ -114,20 +114,57 @@ TEST_CASE(fill_mem_mmap_vmware_2g)
 
     info("Writing patterns:");
     for (auto& range : memmap_page_aligned) {
-	    uint64_t num_pages {(range.second - range.first) >> 12};
-	    info("Filling {016x} - {016x}", range.first, range.second);
-	    for (uint64_t page {0}; page < num_pages; page++) {
-		uint64_t start_addr {range.first + page * PAGE_SIZE};
-		if (start_addr < LOAD_ADDR.first || start_addr > LOAD_ADDR.second) {
-		    uint64_t* start_ptr {reinterpret_cast<uint64_t*>(start_addr)};
-		    *start_ptr = start_addr;
-		    memset(start_ptr + 1, 0, PAGE_SIZE - sizeof(uint64_t));
-		}
-	    }
+        uint64_t num_pages {(range.second - range.first) >> 12};
+        info("Filling {016x} - {016x}", range.first, range.second);
+        for (uint64_t page {0}; page < num_pages; page++) {
+            uint64_t start_addr {range.first + page * PAGE_SIZE};
+            if (start_addr < LOAD_ADDR.first || start_addr > LOAD_ADDR.second) {
+                uint64_t* start_ptr {reinterpret_cast<uint64_t*>(start_addr)};
+                *start_ptr = start_addr;
+                memset(start_ptr + 1, 0, PAGE_SIZE - sizeof(uint64_t));
+            }
+        }
     }
     info("Finished");
+    bool cancel_test {false};
+    uint64_t round {0};
+    while (true) {
+        if (cancel_test) {
+            break;
+        }
+
+        uint64_t first_error {0};
+        uint64_t num_errors {0};
+        for (auto& range : memmap_page_aligned) {
+            uint64_t num_pages {(range.second - range.first) >> 12};
+            for (uint64_t page {0}; page < num_pages; page++) {
+                uint64_t start_addr {range.first + page * PAGE_SIZE};
+                if (start_addr < LOAD_ADDR.first || start_addr > LOAD_ADDR.second) {
+                    uint64_t* start_ptr {reinterpret_cast<uint64_t*>(start_addr)};
+
+                    if (*start_ptr != start_addr) {
+                        if (num_errors == 0) {
+                            info("Round {}: Error @ {x}: {x} vs {x}", round, start_addr, *start_ptr, start_addr);
+                            first_error = start_addr;
+                        } else if ((first_error + (num_errors * 4096)) != start_addr) {
+                            info("Errors from {x} - {x}", first_error, first_error + num_errors * 4096);
+                            first_error = start_addr;
+                            num_errors = 0;
+                        }
+                        num_errors++;
+                        cancel_test = true;
+                    }
+                }
+            }
+        }
+        round++;
+        info("Round {}: ok", round);
+    }
+    info("Test has stopped");
+    while(true);
 #endif
 
+#if 0
     uint16_t* framebuffer = reinterpret_cast<uint16_t*>(0xb8000);
     uint64_t loop {1};
 
@@ -139,9 +176,11 @@ TEST_CASE(fill_mem_mmap_vmware_2g)
 	    for (uint64_t j=0; j<50000ul; j++) {asm("pause");}
         }
 	    loop++;
+        info("%s",((loop % 2) == 0) ? "cyberus" : "sap");
     }
 
     while (true) {}
+#endif
 }
 #endif
 
@@ -180,7 +219,7 @@ TEST_CASE(simple_migrate)
 }
 #endif
 
-#if 1
+#if 0
 TEST_CASE(fill_vga_pattern_static)
 {
     static constexpr char fill_string[] = "Test";
@@ -191,6 +230,18 @@ TEST_CASE(fill_vga_pattern_static)
         uint16_t ch {uint16_t(uint16_t(fill_string[i % 4]) | (0x70 << 8))};
         *(fb + i) = ch;
     }
+    while (true) {
+        asm volatile("nop");
+    }
+}
+#endif
+
+#if 0
+TEST_CASE(fill_fsgsbase)
+{
+    wrmsr(0xc0000100 /* fs_base */, 0x13371111000ul);
+    wrmsr(0xc0000101 /* gs_base */, 0x13382222000ul);
+    wrmsr(0xc0000102 /* kernel_gs_base */, 0x13393333000ul);
     while (true) {
         asm volatile("nop");
     }
