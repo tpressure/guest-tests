@@ -17,7 +17,8 @@ using namespace x86;
 static constexpr uint64_t TEST_VAL{ 0x42 };
 static constexpr xmm_t TEST_VAL_128{ 0x23, 0x42 };
 static constexpr ymm_t TEST_VAL_256{ 0x1111111111111100, 0x2222222222222200, 0x3333333333333300, 0x4444444444444400 };
-static constexpr zmm_t TEST_VAL_512{ 0x23, 0x42, 0x2342, 0x23424223, 0x4223, 0x1337, 0xc4f3, 0xc0ff33 };
+static constexpr zmm_t TEST_VAL_512{ 0x1111111111111100, 0x2222222222222200, 0x3333333333333300, 0x4444444444444400,
+                                     0x5555555555555500, 0x6666666666666600, 0x7777777777777700, 0x8888888888888800 };
 
 static constexpr uint64_t DESTROY_VAL{ ~0ull };
 static constexpr xmm_t DESTROY_VAL_128{ DESTROY_VAL, DESTROY_VAL };
@@ -394,7 +395,7 @@ TEST_CASE_CONDITIONAL(cpuid_reflects_correct_osxsave_value, xsave_supported())
     BARETEST_ASSERT((cpuid(CPUID_LEAF_FAMILY_FEATURES).ecx & LVL_0000_0001_ECX_OSXSAVE) != 0);
 }
 #endif
-#if 1
+#if 0
 
 #define set_ymm(num, values) asm volatile("vmovdqu %0, %%ymm" num ::"m"(values));
 
@@ -462,6 +463,135 @@ TEST_CASE_CONDITIONAL(fill_ymm_regs, avx_supported())
 
     set_val_for(15, val);
     set_ymm("15", val);
+
+    while (true) {}
+}
+#endif
+
+#if 1
+
+#define set_zmm(num, values) asm volatile("vmovdqu64 %0, %%zmm" num ::"m"(values));
+
+void set_val_for(unsigned num, zmm_t& val)
+{
+    val[0] &= ~0xFFull;
+    val[1] &= ~0xFFull;
+    val[2] &= ~0xFFull;
+    val[3] &= ~0xFFull;
+    val[4] &= ~0xFFull;
+    val[5] &= ~0xFFull;
+    val[6] &= ~0xFFull;
+    val[7] &= ~0xFFull;
+
+    val[0] |= num;
+    val[1] |= num;
+    val[2] |= num;
+    val[3] |= num;
+    val[4] |= num;
+    val[5] |= num;
+    val[6] |= num;
+    val[7] |= num;
+}
+
+TEST_CASE_CONDITIONAL(fill_zmm_regs, avx512_supported())
+{
+    zmm_t val {TEST_VAL_512};
+
+    set_val_for(0, val);
+    set_zmm("0", val);
+
+    set_val_for(1, val);
+    set_zmm("1", val);
+
+    set_val_for(2, val);
+    set_zmm("2", val);
+
+    set_val_for(3, val);
+    set_zmm("3", val);
+
+    set_val_for(4, val);
+    set_zmm("4", val);
+
+    set_val_for(5, val);
+    set_zmm("5", val);
+
+    set_val_for(6, val);
+    set_zmm("6", val);
+
+    set_val_for(7, val);
+    set_zmm("7", val);
+
+    set_val_for(8, val);
+    set_zmm("8", val);
+
+    set_val_for(9, val);
+    set_zmm("9", val);
+
+    set_val_for(10, val);
+    set_zmm("10", val);
+
+    set_val_for(11, val);
+    set_zmm("11", val);
+
+    set_val_for(12, val);
+    set_zmm("12", val);
+
+    set_val_for(13, val);
+    set_zmm("13", val);
+
+    set_val_for(14, val);
+    set_zmm("14", val);
+
+    set_val_for(15, val);
+    set_zmm("15", val);
+
+    set_val_for(16, val);
+    set_zmm("16", val);
+
+    set_val_for(17, val);
+    set_zmm("17", val);
+
+    set_val_for(18, val);
+    set_zmm("18", val);
+
+    set_val_for(19, val);
+    set_zmm("19", val);
+
+    set_val_for(20, val);
+    set_zmm("20", val);
+
+    set_val_for(21, val);
+    set_zmm("21", val);
+
+    set_val_for(22, val);
+    set_zmm("22", val);
+
+    set_val_for(23, val);
+    set_zmm("23", val);
+
+    set_val_for(24, val);
+    set_zmm("24", val);
+
+    set_val_for(25, val);
+    set_zmm("25", val);
+
+    set_val_for(26, val);
+    set_zmm("26", val);
+
+    set_val_for(27, val);
+    set_zmm("27", val);
+
+    set_val_for(28, val);
+    set_zmm("28", val);
+
+    set_val_for(29, val);
+    set_zmm("29", val);
+
+    set_val_for(30, val);
+    set_zmm("30", val);
+
+    set_val_for(31, val);
+    set_zmm("31", val);
 
     while (true) {}
 }
