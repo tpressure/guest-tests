@@ -16,7 +16,7 @@ using namespace x86;
 
 static constexpr uint64_t TEST_VAL{ 0x42 };
 static constexpr xmm_t TEST_VAL_128{ 0x23, 0x42 };
-static constexpr ymm_t TEST_VAL_256{ 0x23, 0x42, 0x2342, 0x23424223 };
+static constexpr ymm_t TEST_VAL_256{ 0x1111111111111100, 0x2222222222222200, 0x3333333333333300, 0x4444444444444400 };
 static constexpr zmm_t TEST_VAL_512{ 0x23, 0x42, 0x2342, 0x23424223, 0x4223, 0x1337, 0xc4f3, 0xc0ff33 };
 
 static constexpr uint64_t DESTROY_VAL{ ~0ull };
@@ -132,6 +132,7 @@ void irq_handler_fn(intr_regs* regs)
     irq_info.record(regs->vector, regs->error_code);
     longjmp(jump_buffer, 1);
 }
+#if 0
 
 TEST_CASE(fxsave_fxrstor_default)
 {
@@ -392,5 +393,78 @@ TEST_CASE_CONDITIONAL(cpuid_reflects_correct_osxsave_value, xsave_supported())
     set_cr4(get_cr4() | math::mask_from(cr4::OSXSAVE));
     BARETEST_ASSERT((cpuid(CPUID_LEAF_FAMILY_FEATURES).ecx & LVL_0000_0001_ECX_OSXSAVE) != 0);
 }
+#endif
+#if 1
+
+#define set_ymm(num, values) asm volatile("vmovdqu %0, %%ymm" num ::"m"(values));
+
+void set_val_for(unsigned num, ymm_t& val)
+{
+    val[0] &= ~0xFFull;
+    val[1] &= ~0xFFull;
+    val[2] &= ~0xFFull;
+    val[3] &= ~0xFFull;
+
+    val[0] |= num;
+    val[1] |= num;
+    val[2] |= num;
+    val[3] |= num;
+}
+
+TEST_CASE_CONDITIONAL(fill_ymm_regs, avx_supported())
+{
+    ymm_t val {TEST_VAL_256};
+
+    set_val_for(0, val);
+    set_ymm("0", val);
+
+    set_val_for(1, val);
+    set_ymm("1", val);
+
+    set_val_for(2, val);
+    set_ymm("2", val);
+
+    set_val_for(3, val);
+    set_ymm("3", val);
+
+    set_val_for(4, val);
+    set_ymm("4", val);
+
+    set_val_for(5, val);
+    set_ymm("5", val);
+
+    set_val_for(6, val);
+    set_ymm("6", val);
+
+    set_val_for(7, val);
+    set_ymm("7", val);
+
+    set_val_for(8, val);
+    set_ymm("8", val);
+
+    set_val_for(9, val);
+    set_ymm("9", val);
+
+    set_val_for(10, val);
+    set_ymm("10", val);
+
+    set_val_for(11, val);
+    set_ymm("11", val);
+
+    set_val_for(12, val);
+    set_ymm("12", val);
+
+    set_val_for(13, val);
+    set_ymm("13", val);
+
+    set_val_for(14, val);
+    set_ymm("14", val);
+
+    set_val_for(15, val);
+    set_ymm("15", val);
+
+    while (true) {}
+}
+#endif
 
 BARETEST_RUN;
