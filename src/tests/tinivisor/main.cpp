@@ -176,7 +176,8 @@ TEST_CASE(tinivisor_nested_guest_should_never_see_vmxe_in_cr4)
 
     tini.register_handler(x86::vmx_exit_reason::CR_ACCESS, cr4_exit);
 
-    for (unsigned rounds{ 100000 }; rounds > 0; rounds--) {
+    info("CR4 is: {x}", get_cr4());
+    while (true) {
         set_cr4(get_cr4() | math::mask_from(x86::cr4::PGE));
         set_cr4(get_cr4() & ~math::mask_from(x86::cr4::PGE));
         asm volatile("pause");
